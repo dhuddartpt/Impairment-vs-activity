@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPT Clinical Reasoning Lab: 40-Item ICF Trainer</title>
+    <style>
+        :root { --touro-blue: #003057; --success-green: #27ae60; --error-red: #c0392b; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h1, h2, h3 { color: var(--touro-blue); border-bottom: 2px solid #eee; padding-bottom: 10px; text-align: center; }
+        
+        /* ICF Section */
+        .icf-grid { display: flex; gap: 15px; margin-bottom: 30px; }
+        .column { flex: 1; min-height: 450px; border: 2px solid #dfe6e9; border-radius: 8px; padding: 15px; background: #ffffff; transition: background 0.2s; }
+        .column h3 { font-size: 1.1em; background: #f8f9fa; margin: -15px -15px 15px -15px; padding: 10px; border-radius: 8px 8px 0 0; }
+        .item { background: #e3f2fd; border: 1px solid #2196f3; padding: 10px; margin: 8px 0; cursor: grab; border-radius: 5px; font-size: 0.85em; font-weight: 500; text-align: center; }
+        .item:active { cursor: grabbing; opacity: 0.7; }
+        
+        /* Writing Sections */
+        .section-box { margin-top: 40px; border-top: 3px solid var(--touro-blue); padding-top: 20px; }
+        textarea { width: 100%; height: 100px; border: 1px solid #ccc; border-radius: 6px; padding: 12px; font-size: 15px; margin-top: 10px; box-sizing: border-box; }
+        .feedback { margin-top: 10px; padding: 12px; border-radius: 6px; display: none; }
+        .pass { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; display: block; }
+        .fail { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; display: block; }
+        
+        .btn-row { display: flex; gap: 10px; justify-content: center; margin-top: 20px; }
+        button { background: var(--touro-blue); color: white; border: none; padding: 12px 25px; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: 600; }
+        .dl-btn { background: var(--success-green); }
+        button:hover { opacity: 0.9; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>PT Assessment & Clinical Reasoning Tool</h1>
+    
+    
+
+    <section>
+        <h3>Step 1: Categorize the Findings (ICF Problem List)</h3>
+        <p style="text-align: center;"><em>Drag 5 items to each column. Logic will reset if incorrect.</em></p>
+        <div class="icf-grid">
+            <div id="pool" class="column" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <h3>Findings Pool</h3>
+                <div id="item-pool"></div>
+            </div>
+            <div id="impairment" class="column" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <h3>Impairments (Body Structure/Fx)</h3>
+            </div>
+            <div id="activity" class="column" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <h3>Activity Limitations</h3>
+            </div>
+        </div>
+        <div class="btn-row">
+            <button onclick="initExercise()">Shuffle 10 New Random Items</button>
+        </div>
+    </section>
+
+    <div class="section-box">
+        <h3>Step 2: Synthesis & Prognosis</h3>
+        <p><strong>Diagnosis:</strong> Link impairments to activity using the word <strong>"consistent"</strong>.</p>
+        <textarea id="evalText" placeholder="Example: Gait ataxia is consistent with the diagnosis of myelopathy, resulting in Mod A for ambulation..."></textarea>
+        <div id="evalFeedback" class="feedback"></div>
+
+        <p style="margin-top:20px;"><strong>Prognosis:</strong> State potential and justify with <strong>'based on'</strong>.</p>
+        <textarea id="progText" placeholder="Example: Rehab potential is Good based on high patient motivation..."></textarea>
+        <div id="progFeedback" class="feedback"></div>
+        
+        <div class="btn-row">
+            <button class="dl-btn" onclick="validateAndDownload()">Validate & Download Note</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 40 ITEM BANK (20 per category)
+    const impairments = [
+        "Light touch impaired C6", "3+/5 Wrist Extensors", "Hyperreflexia 3+ Patellar", "Positive Hoffmann's sign", 
+        "Decreased Shoulder Flexion (110°)", "Impaired Hallux Proprioception", "Positive Babinski sign", "Hypertonicity L Plantarflexors",
+        "Decreased ankle dorsiflexion (0°)", "3/5 Hip Abductor strength", "Inspiratory muscle weakness", "Pitting edema (2+) ankles",
+        "Clonus (4 beats) bilaterally", "Impaired sharp/dull at L4", "Scapular winging during elevation", "Forward head posture",
+        "Decreased cervical rotation", "Sensation absent at T10", "4/5 Elbow Extensor strength", "Dysmetria on finger-to-nose"
+    ];
+
+    const activities = [
+        "Min A for Sit-to-Stand", "Mod A for Gait with RW", "Supervision for ADLs", "Max A for Bed Mobility", 
+        "Unable to negotiate curbs", "High Fall Risk (BBS 34/56)", "Slowed gait speed (0.6 m/s)", "Min A for Toilet Transfers",
+        "Requires 2-person assist for stairs", "Unable to perform floor transfers", "Contact Guard (CGA) for reaching", "Max A for supine-to-sit",
+        "Supervision for showering", "Limited community ambulation", "Dependent for lower body dressing", "Min A for car transfers",
+        "Moderate assist for rolling", "Increased sway in Romberg", "Difficulty with overhead reaching", "Unable to lift 10lbs from floor"
+    ];
+
+    function initExercise() {
+        const pool = document.getElementById('item-pool');
+        pool.innerHTML = '';
+        document.getElementById('impairment').innerHTML = '<h3>Impairments (Body Structure/Fx)</h3>';
+        document.getElementById('activity').innerHTML = '<h3>Activity Limitations</h3>';
+        
+        let selected = [];
+        // Pull 5 random from each
+        const shuffI = [...impairments].sort(() => 0.5 - Math.random()).slice(0, 5);
+        const shuffA = [...activities].sort(() => 0.5 - Math.random()).slice(0, 5);
+        
+        shuffI.forEach(t => selected.push({text: t, type: 'impairment'}));
+        shuffA.forEach(t => selected.push({text: t, type: 'activity'}));
+        
+        // Final shuffle of the 10 combined items
+        selected.sort(() => 0.5 - Math.random()).forEach((item, i) => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.draggable = true;
+            div.id = 'draggable-' + i;
+            div.innerText = item.text;
+            div.setAttribute('data-category', item.type);
+            div.ondragstart = (e) => { e.dataTransfer.setData("text", e.target.id); };
+            pool.appendChild(div);
+        });
+    }
+
+    function allowDrop(e) { e.preventDefault(); }
+    
+    function drop(e) {
+        e.preventDefault();
+        const id = e.dataTransfer.getData("text");
+        const el = document.getElementById(id);
+        const target = e.target.closest('.column');
+        const cat = el.getAttribute('data-category');
+
+        if (target.id === 'pool') {
+            target.appendChild(el);
+        } else if (target.id === cat) {
+            target.appendChild(el);
+        } else {
+            alert("Classification Error: Findings do not match ICF definition. Hint: Is this a body structure/function deficit or a functional task limitation?");
+        }
+    }
+
+    function validateAndDownload() {
+        const eval = document.getElementById('evalText').value.toLowerCase();
+        const prog = document.getElementById('progText').value.toLowerCase();
+        let pass = true;
+
+        // Validation Logic
+        if (!eval.includes('consistent')) {
+            alert("Assessment Rule Error: You must use the word 'consistent' to link medical and PT findings.");
+            pass = false;
+        }
+        if (!["excellent","good","fair","poor"].some(r => prog.includes(r)) || !prog.includes("based on")) {
+            alert("Prognosis Rule Error: You must state a potential and justify it using 'based on'.");
+            pass = false;
+        }
+
+        if (pass) {
+            const content = `PT STUDENT ASSESSMENT EXERCISE\n\nASSESSMENT:\n${document.getElementById('evalText').value}\n\nPROGNOSIS:\n${document.getElementById('progText').value}`;
+            const blob = new Blob([content], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'PT_Clinical_Reasoning_Result.txt';
+            a.click();
+        }
+    }
+
+    initExercise();
+</script>
+</body>
+</html>
