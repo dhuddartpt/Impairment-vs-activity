@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PT ICF Classification Drill - Advanced</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+        .header-box { text-align: center; margin-bottom: 20px; }
+        .container { display: flex; gap: 20px; justify-content: center; }
+        .column { width: 320px; min-height: 400px; border: 2px solid #bdc3c7; border-radius: 8px; padding: 15px; background: white; transition: background 0.3s; }
+        .column h3 { text-align: center; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        .item { padding: 12px; margin: 8px 0; background: #ecf0f1; cursor: grab; border: 1px solid #95a5a6; border-radius: 4px; font-size: 0.9em; box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+        .item:active { cursor: grabbing; opacity: 0.6; }
+        #feedback { text-align: center; margin-top: 20px; font-weight: bold; height: 24px; }
+        .error-text { color: #e74c3c; }
+        .success-text { color: #27ae60; }
+        .btn-container { text-align: center; margin-top: 20px; }
+        button { padding: 10px 25px; font-size: 1em; cursor: pointer; background: #3498db; color: white; border: none; border-radius: 5px; }
+        button:hover { background: #2980b9; }
+    </style>
+</head>
+<body>
+
+<div class="header-box">
+    <h2>ICF Problem List Practice</h2>
+    <p>Drag findings into the correct ICF category. 5 per category required.</p>
+</div>
+
+
+
+<div class="container">
+    <div id="pool" class="column" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <h3>Findings Pool</h3>
+        <div id="item-container"></div>
+    </div>
+    
+    <div id="impairment" class="column" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <h3>Impairments (Body Structure/Fx)</h3>
+    </div>
+    
+    <div id="activity" class="column" ondrop="drop(event)" ondragover="allowDrop(event)">
+        <h3>Activity Limitations</h3>
+    </div>
+</div>
+
+<div id="feedback"></div>
+
+<div class="btn-container">
+    <button onclick="initExercise()">Reset & Shuffle New Items</button>
+</div>
+
+<script>
+    // Expanded Bank of Data
+    const impairmentBank = [
+        "Light touch impaired at C6", "3+/5 Wrist Extensor strength", "Hyperreflexia (3+) patellar tendon",
+        "Positive Hoffmann’s sign", "Decreased shoulder ROM (120 deg)", "Inspiratory muscle weakness",
+        "Impaired proprioception at hallux", "Resting tremor in right hand", "Hypertonicity in plantarflexors",
+        "Diminished breath sounds RLL", "Scapular winging during flexion", "Pitting edema 2+ lateral malleolus"
+    ];
+
+    const activityBank = [
+        "Mod A for Ambulation 50ft", "Min A for Sit-to-Stand", "Supervision for UE Dressing",
+        "Max A for bed mobility", "Unable to negotiate 4 steps", "Min A for toilet transfers",
+        "Requires RW for community distances", "Difficulty with overhead reaching", 
+        "Mod A for sit-to-supine", "Increased fall risk (BBS 38/56)", "Slowed gait velocity",
+        "Needs rail for curb negotiation"
+    ];
+
+    function allowDrop(ev) { ev.preventDefault(); }
+
+    function drag(ev) {
+        ev.dataTransfer.setData("text", ev.target.id);
+        ev.dataTransfer.setData("type", ev.target.getAttribute('data-type'));
+    }
+
+    function drop(ev) {
+        ev.preventDefault();
+        const data = ev.dataTransfer.setData("text", ev.target.id); // Not needed but for safety
+        const id = ev.dataTransfer.getData("text");
+        const itemType = ev.dataTransfer.getData("type");
+        const el = document.getElementById(id);
+        const target = ev.target.closest('.column');
+        const feedback = document.getElementById('feedback');
+
+        if (target.id === 'pool') {
+            target.appendChild(el);
+            feedback.innerText = "";
+        } else if (target.id === itemType) {
+            target.appendChild(el);
+            feedback.innerHTML = '<span class="success-text">Correct Placement!</span>';
+            checkWin();
+        } else {
+            feedback.innerHTML = '<span class="error-text">Incorrect: That finding belongs in the ' + itemType + ' column.</span>';
+        }
+    }
+
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function initExercise() {
+        // Clear columns
+        document.getElementById('item-container').innerHTML = "";
+        document.getElementById('impairment').innerHTML = "<h3>Impairments (Body Structure/Fx)</h3>";
+        document.getElementById('activity').innerHTML = "<h3>Activity Limitations</h3>";
+        document.getElementById('feedback').innerText = "";
+
+        // Select 5 random from each
+        const selectedImpairments = shuffle([...impairmentBank]).slice(0, 5);
+        const selectedActivities = shuffle([...activityBank]).slice(0, 5);
+        
+        const combined = [];
+        selectedImpairments.forEach((text, i) => combined.push({text, type: 'impairment', id: 'imp-'+i}));
+        selectedActivities.forEach((text, i) => combined.push({text, type: 'activity', id: 'act-'+i}));
+        
+        shuffle(combined).forEach(item => {
+            const div = document.createElement('div');
+            div.id = item.id;
+            div.className = 'item';
+            div.draggable = true;
+            div.innerText = item.text;
+            div.setAttribute('data-type', item.type);
+            div.ondragstart = drag;
+            document.getElementById('item-container').appendChild(div);
+        });
+    }
+
+    function checkWin() {
+        const poolItems = document.getElementById('item-container').children.length;
+        if (poolItems === 0) {
+            document.getElementById('feedback').innerHTML = '<span class="success-text">Excellent! All items classified according to Ch. 11 standards.</span>';
+        }
+    }
+
+    // Load on start
+    initExercise();
+</script>
+</body>
+</html>
